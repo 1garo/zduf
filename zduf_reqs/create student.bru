@@ -1,11 +1,11 @@
 meta {
-  name: create teacher
+  name: create student
   type: http
-  seq: 1
+  seq: 2
 }
 
 post {
-  url: http://localhost:3000/teacher
+  url: http://localhost:3000/student
   body: json
   auth: none
 }
@@ -13,7 +13,7 @@ post {
 body:json {
    {
      "first_name": "alex",
-     "last_name": "yay",
+     "last_name": "yoy",
      "age": 23
    }
 }
