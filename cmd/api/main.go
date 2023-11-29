@@ -3,13 +3,16 @@ package main
 import (
 	"context"
 	"fmt"
-	"net/http"
+	"log"
 	"os"
 	"time"
 
+	"github.com/1garo/zduf/database"
+	"github.com/1garo/zduf/internal/http"
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5"
 )
+
 var conn *pgx.Conn
 
 // Class schema.
@@ -31,27 +34,6 @@ type Student struct {
 	tableName string
 }
 
-// Teacher schema.
-type Teacher struct {
-	ID      uint `json:"-"`
-	FirstName string    `json:"first_name"      binding:"required"`
-	LastName string    `json:"last_name"      binding:"required"`
-	Age     uint      `json:"age"  binding:"required"`
-	//Teaches []Class   `json:"-"`
-
-	tableName string
-}
-
-func (t *Teacher) create() (int, error) {
-	var id int
-	err := conn.QueryRow(
-		context.Background(),
-		fmt.Sprintf("insert into %s(first_name, last_name, age) values ($1, $2, $3) returning id", t.tableName),
-		t.FirstName, t.LastName, t.Age).Scan(&id)
-
-	return id, err
-}
-
 func (s *Student) create() (int, error) {
 	var id int
 	err := conn.QueryRow(
@@ -63,81 +45,58 @@ func (s *Student) create() (int, error) {
 }
 
 func main() {
-	var err error
 	r := gin.Default()
 	urlExample := "postgres://zduf:admin@localhost:5432/zduf_db"
-	//conn, err := pgx.Connect(context.Background(), os.Getenv("DATABASE_URL"))
-	conn, err = pgx.Connect(context.Background(), urlExample)
+	conn, err := database.NewConnection(urlExample)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Unable to connect to database: %v\n", err)
+		log.Fatal(err)
 		os.Exit(1)
 	}
-	defer conn.Close(context.Background())
+	defer conn.Close()
 
-	r.POST("/teacher", func(c *gin.Context) {
-		var teacher Teacher
+	http.SetRoutes(r)
+	http.Configure()
 
-		teacher.tableName = "teacher"
 
-		if err := c.BindJSON(&teacher); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"error": err.Error(),
-			})
-			return
-		}
+	//r.POST("/class", func(c *gin.Context) {
+	//	var class Class
 
-		id, err := teacher.create()
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"error": err.Error(),
-			})
-			return
-		}
+	//	if err := c.BindJSON(&class); err != nil {
+	//		c.JSON(http.StatusBadRequest, gin.H{
+	//			"error": err.Error(),
+	//		})
+	//		return
+	//	}
 
-		c.JSON(http.StatusCreated, gin.H{
-			"data": id,
-		})
-	})
+	//	c.JSON(http.StatusOK, gin.H{
+	//		"data": class,
+	//	})
+	//})
 
-	r.POST("/class", func(c *gin.Context) {
-		var class Class
+	//r.POST("/student", func(c *gin.Context) {
+	//	var student Student
 
-		if err := c.BindJSON(&class); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"error": err.Error(),
-			})
-			return
-		}
+	//	student.tableName = "student"
 
-		c.JSON(http.StatusOK, gin.H{
-			"data": class,
-		})
-	})
+	//	if err := c.BindJSON(&student); err != nil {
+	//		c.JSON(http.StatusBadRequest, gin.H{
+	//			"error": err.Error(),
+	//		})
+	//		return
+	//	}
 
-	r.POST("/student", func(c *gin.Context) {
-		var student Student
+	//	id, err := student.create()
+	//	if err != nil {
+	//		c.JSON(http.StatusInternalServerError, gin.H{
+	//			"error": err.Error(),
+	//		})
+	//		return
+	//	}
 
-		student.tableName = "student"
-
-		if err := c.BindJSON(&student); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"error": err.Error(),
-			})
-			return
-		}
-
-		id, err := student.create()
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"error": err.Error(),
-			})
-			return
-		}
-
-		c.JSON(http.StatusOK, gin.H{
-			"data": id,
-		})
-	})
+	//	c.JSON(http.StatusOK, gin.H{
+	//		"data": id,
+	//	})
+	//})
 
 	r.Run(":3000") // listen and serve on 0.0.0.0:8080 (for windows "localhost:8080")
 }
